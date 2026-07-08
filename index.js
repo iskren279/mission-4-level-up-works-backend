@@ -24,12 +24,12 @@ const pool = mysql.createPool({
 
 //default route handler - check server running okay
 app.get("/", (req, res) => {
-  res.send("Server conected!");
+  res.send("Server connect http://localhost:5173/ected!");
 });
 
-//default route handler databse test
+//default route handler database test
 app.get("/dbTest", (req, res) => {
-  //   res.send("Server conected!");
+  //   res.send("Server connected!");
   pool.query("SELECT * FROM student", (err, result) => {
     if (err) {
       console.log(err);
@@ -70,7 +70,7 @@ app.post("/auth/:role/signup", (req, res) => {
   const table = role; // student or teacher table
 
   // Parameterized query to check if email already exists and avoid SQL injection
-  pool.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, result) => {
+  pool.execute(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, result) => {
 
     // Validation to check if there is an error in the database
     if (err) {
@@ -85,7 +85,7 @@ app.post("/auth/:role/signup", (req, res) => {
 
     // Query to insert new user to the database
     const mysql = `INSERT INTO ${table} (name, email, password) VALUES (?, ?, ?)`;
-    pool.query(mysql, [name, email, password], (err2) => {
+    pool.execute(mysql, [name, email, password], (err2) => {
 
       // Validation to check if there is an error in the database
       if (err2) {
@@ -101,7 +101,7 @@ app.post("/auth/:role/signup", (req, res) => {
 // Unified login route for both student and teacher
 app.post("/auth/:role/login", (req, res) => {
 
-  // Dinamic route parameter extraction to get the role from the request params
+  // Dynamic route parameter extraction to get the role from the request params
   const { role } = req.params; // student or teacher
   const { email, password } = req.body;
 
@@ -118,7 +118,7 @@ app.post("/auth/:role/login", (req, res) => {
   const table = role; // student or teacher table
 
   // Query to check if email and password exists in the database
-  pool.query(
+  pool.execute(
     `SELECT * FROM ${table} WHERE email = ? AND password = ?`,
     [email, password],
     (err, result) => {
