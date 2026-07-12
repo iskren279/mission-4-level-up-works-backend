@@ -1,4 +1,4 @@
-import express, { Router } from "express";
+import express from "express";
 import mysql from "mysql2";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -42,7 +42,7 @@ app.get("/debug-project-columns", (req, res) => {
 
 //default route handler - check server running okay
 app.get("/", (req, res) => {
-  res.send("Server conected!");
+  res.send("Server connected!");
 });
 
 //default route handler databse test
@@ -73,6 +73,46 @@ app.get("/debug-db", (req, res) => {
     if (err) return res.send(err);
     res.send(result);
   });
+});
+
+// Unified login route for both student and teacher
+app.post("/auth/:role/login", (req, res) => {
+  const { role } = req.params;
+  const { email, password } = req.body;
+
+  if (role !== "student" && role !== "teacher") {
+    return res.status(400).json({ errorMessage: "Invalid role" });
+  }
+
+  if (!email?.trim() || !password?.trim()) {
+    return res
+      .status(400)
+      .json({ errorMessage: "Please enter email and password" });
+  }
+
+  const table = role;
+
+  pool.query(
+    `SELECT * FROM ${table} WHERE email = ? AND password = ?`,
+    [email, password],
+    (err, result) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ errorMessage: "Database error" });
+      }
+
+      if (result.length === 0) {
+        return res
+          .status(401)
+          .json({ errorMessage: "Invalid email or password" });
+      }
+
+      return res.status(200).json({
+        message: `${role} logged in successfully`,
+        user: result[0],
+      });
+    },
+  );
 });
 
 app.get("/projects/:id/instructions", (req, res) => {
