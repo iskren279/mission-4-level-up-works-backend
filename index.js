@@ -67,7 +67,7 @@ app.get("/dbPing", (req, res) => {
   });
 });
 
-// ****************************This is my part*************************
+// ****************************This is Iskren's part*************************
 app.get("/debug-db", (req, res) => {
   pool.query("SELECT DATABASE() AS db", (err, result) => {
     if (err) return res.send(err);
