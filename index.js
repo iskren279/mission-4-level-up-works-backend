@@ -22,6 +22,24 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
+app.get("/debug-tables", (req, res) => {
+  pool.query("SHOW TABLES", (err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json(result);
+  });
+});
+
+app.get("/debug-project-columns", (req, res) => {
+  pool.query("DESCRIBE project", (err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json(result);
+  });
+});
+
 //default route handler - check server running okay
 app.get("/", (req, res) => {
   res.send("Server connect http://localhost:5173/ected!");
@@ -147,14 +165,26 @@ app.post("/auth/:role/login", async (req, res) => {
   }
 });
 
+app.get("/projects/:id/instructions", (req, res) => {
+  const { id } = req.params;
 
+  pool.query(
+    "SELECT instructions FROM project WHERE project_id = ?",
+    [id],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).send(err);
+      }
 
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Project not found" });
+      }
 
-//256 to 356 Isaiah
-// 360 to 460 Iskren
-//461 to 560 Corner
-
-//
+      res.json(result[0]);
+    },
+  );
+});
 
 //====PORT SETUP=====//
 const PORT = process.env.PORT;
