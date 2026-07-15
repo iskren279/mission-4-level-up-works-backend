@@ -53,96 +53,100 @@ app.get("/dbPing", (req, res) => {
 
 //155 to 255 Rodrigo
 // Unified signup route for both student and teacher
-app.post("/auth/:role/signup", (req, res) => {
-  const { role } = req.params; // student or teacher
-  const { name, email, password } = req.body;
+app.post("/auth/:role/signup", async (req, res) => {
+  try {
+    const { role } = req.params; // student or teacher
+    const { name, email, password } = req.body;
 
-  // Validation to check if either student or teacher only to avoid SQL injection
-  if (role !== "student" && role !== "teacher") {
-    return res.status(400).json({ errorMessage: "Invalid role" });
-  }
-
-  // Validation to check all required fields are present and not empty
-  if (!name?.trim() || !email?.trim() || !password?.trim()) {
-    return res.status(400).json({ errorMessage: "Please fill in all fields" });
-  }
-
-  const table = role; // student or teacher table
-
-  // Parameterized query to check if email already exists and avoid SQL injection
-  pool.execute(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, result) => {
-
-    // Validation to check if there is an error in the database
-    if (err) {
-      console.error("Database error:", err);
-      return res.status(500).json({ errorMessage: "Database error" });
+    // Validation to check if either student or teacher only to avoid SQL injection
+    if (role !== "student" && role !== "teacher") {
+      return res.status(400).json({ errorMessage: "Invalid role" });
     }
 
-    // Validation to check if email already exists in the database
-    if (result.length > 0) {
+    // Validation to check all required fields are present and not empty
+    if (!name?.trim() || !email?.trim() || !password?.trim()) {
+      return res.status(400).json({ errorMessage: "Please fill in all fields" });
+    }
+
+    const table = role; // student or teacher table
+
+    // Promise-based pool so async/await works (callback `pool` is used elsewhere)
+    const db = pool.promise();
+
+    // Insert user directly (MySQL UNIQUE constraint handles duplicates)
+    await db.execute(
+      `INSERT INTO ${table} (name, email, password) VALUES (?, ?, ?)`,
+      [name, email, password]
+    );
+
+    return res.status(201).json({ message: `${role} created successfully` });
+
+
+  } catch (err2) {
+    // MySQL duplicate email error
+    if (err2.code === "ER_DUP_ENTRY") { // ER_DUP_ENTRY is the error code for duplicate email
       return res.status(400).json({ errorMessage: "Email already exists" });
     }
 
-    // Query to insert new user to the database
-    const mysql = `INSERT INTO ${table} (name, email, password) VALUES (?, ?, ?)`;
-    pool.execute(mysql, [name, email, password], (err2) => {
-
-      // Validation to check if there is an error in the database
-      if (err2) {
-        console.error("Insert error:", err2);
-        return res.status(500).json({ errorMessage: "Error saving user" });
-      }
-
-      return res.status(201).json({ message: `${role} created successfully` });
-    });
-  });
+    console.error("Signup error:", err2);
+    return res.status(500).json({ errorMessage: "Error saving user" });
+  }
 });
+
+
 
 // Unified login route for both student and teacher
-app.post("/auth/:role/login", (req, res) => {
+app.post("/auth/:role/login", async (req, res) => {
+  try {
+    // Dynamic route parameter extraction to get the role from the request params
+    const { role } = req.params; // student or teacher
+    const { email, password } = req.body;
 
-  // Dynamic route parameter extraction to get the role from the request params
-  const { role } = req.params; // student or teacher
-  const { email, password } = req.body;
-
-  // Validation to check if either student or teacher to login
-  if (role !== "student" && role !== "teacher") {
-    return res.status(400).json({ errorMessage: "Invalid role" });
-  }
-
-  // Validation to check required fields are present and not empty
-  if (!email?.trim() || !password?.trim()) {
-    return res.status(400).json({ errorMessage: "Please enter email and password" });
-  }
-
-  const table = role; // student or teacher table
-
-  // Query to check if email and password exists in the database
-  pool.execute(
-    `SELECT * FROM ${table} WHERE email = ? AND password = ?`,
-    [email, password],
-    (err, result) => {
-
-      // Validation to check if there is an error in the database
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ errorMessage: "Database error" });
-      }
-
-      // Validation to check if email and password exists in the database
-      if (result.length === 0) {
-        return res.status(401).json({ errorMessage: "Invalid email or password" });
-      }
-
-
-      // Return success message and user data if email and password exists in the database
-      return res.status(200).json({
-        message: `${role} logged in successfully`,
-        user: result[0]
-      });
+    // Validation to check if either student or teacher to login
+    if (role !== "student" && role !== "teacher") {
+      return res.status(400).json({ errorMessage: "Invalid role" });
     }
-  );
+
+    // Validation to check required fields are present and not empty
+    if (!email?.trim() || !password?.trim()) {
+      return res.status(400).json({ errorMessage: "Please enter email and password" });
+    }
+
+    const table = role; // student or teacher table
+
+    // Promise-based pool so async/await works (callback `pool` is used elsewhere)
+    const db = pool.promise();
+
+    // Query to find the user by email
+    const [rows] = await db.execute(
+      `SELECT * FROM ${table} WHERE email = ?`,
+      [email]
+    );
+
+    // Validation to check if email and password exists in the database
+    if (rows.length === 0) {
+      return res.status(401).json({ errorMessage: "Invalid email or password" });
+    }
+
+    const user = rows[0];
+
+    // Compare plain passwords (only for testing)
+    if (user.password !== password) {
+      return res.status(401).json({ errorMessage: "Invalid email or password" });
+    }
+
+    return res.status(200).json({
+      message: `${role} logged in successfully`,
+      user
+    });
+
+  } catch (err) {
+    // Catch block to handle any database errors
+    console.error("Database error:", err);
+    return res.status(500).json({ errorMessage: "Database error" });
+  }
 });
+
 
 
 
