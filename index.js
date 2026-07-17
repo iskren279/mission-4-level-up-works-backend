@@ -42,12 +42,12 @@ app.get("/debug-project-columns", (req, res) => {
 
 //default route handler - check server running okay
 app.get("/", (req, res) => {
-  res.send("Server connected!");
+  res.send("Server connect http://localhost:5173/ected!");
 });
 
-//default route handler databse test
+//default route handler database test
 app.get("/dbTest", (req, res) => {
-  //   res.send("Server conected!");
+  //   res.send("Server connected!");
   pool.query("SELECT * FROM student", (err, result) => {
     if (err) {
       console.log(err);
@@ -75,44 +75,98 @@ app.get("/debug-db", (req, res) => {
   });
 });
 
+//54 to 154 for Fateha
+
+//155 to 255 Rodrigo
+// Unified signup route for both student and teacher
+app.post("/auth/:role/signup", async (req, res) => {
+  try {
+    const { role } = req.params;
+    const { name, email, password } = req.body;
+
+    if (role !== "student" && role !== "teacher") {
+      return res.status(400).json({ errorMessage: "Invalid role" });
+    }
+
+    if (!name?.trim() || !email?.trim() || !password?.trim()) {
+      return res
+        .status(400)
+        .json({ errorMessage: "Please fill in all fields" });
+    }
+
+    const table = role;
+    const db = pool.promise();
+
+    await db.execute(
+      `INSERT INTO ${table} (name, email, password) VALUES (?, ?, ?)`,
+      [name, email, password],
+    );
+
+    return res.status(201).json({ message: `${role} created successfully` });
+  } catch (err2) {
+    if (err2.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ errorMessage: "Email already exists" });
+    }
+
+    console.error("Signup error:", err2);
+    return res.status(500).json({ errorMessage: "Error saving user" });
+  }
+});
+
 // Unified login route for both student and teacher
-app.post("/auth/:role/login", (req, res) => {
-  const { role } = req.params;
-  const { email, password } = req.body;
+app.post("/auth/:role/login", async (req, res) => {
+  try {
+    // Dynamic route parameter extraction to get the role from the request params
+    const { role } = req.params; // student or teacher
+    const { email, password } = req.body;
 
-  if (role !== "student" && role !== "teacher") {
-    return res.status(400).json({ errorMessage: "Invalid role" });
+    // Validation to check if either student or teacher to login
+    if (role !== "student" && role !== "teacher") {
+      return res.status(400).json({ errorMessage: "Invalid role" });
+    }
+
+    // Validation to check required fields are present and not empty
+    if (!email?.trim() || !password?.trim()) {
+      return res
+        .status(400)
+        .json({ errorMessage: "Please enter email and password" });
+    }
+
+    const table = role; // student or teacher table
+
+    // Promise-based pool so async/await works (callback `pool` is used elsewhere)
+    const db = pool.promise();
+
+    // Query to find the user by email
+    const [rows] = await db.execute(`SELECT * FROM ${table} WHERE email = ?`, [
+      email,
+    ]);
+
+    // Validation to check if email and password exists in the database
+    if (rows.length === 0) {
+      return res
+        .status(401)
+        .json({ errorMessage: "Invalid email or password" });
+    }
+
+    const user = rows[0];
+
+    // Compare plain passwords (only for testing)
+    if (user.password !== password) {
+      return res
+        .status(401)
+        .json({ errorMessage: "Invalid email or password" });
+    }
+
+    return res.status(200).json({
+      message: `${role} logged in successfully`,
+      user,
+    });
+  } catch (err) {
+    // Catch block to handle any database errors
+    console.error("Database error:", err);
+    return res.status(500).json({ errorMessage: "Database error" });
   }
-
-  if (!email?.trim() || !password?.trim()) {
-    return res
-      .status(400)
-      .json({ errorMessage: "Please enter email and password" });
-  }
-
-  const table = role;
-
-  pool.query(
-    `SELECT * FROM ${table} WHERE email = ? AND password = ?`,
-    [email, password],
-    (err, result) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ errorMessage: "Database error" });
-      }
-
-      if (result.length === 0) {
-        return res
-          .status(401)
-          .json({ errorMessage: "Invalid email or password" });
-      }
-
-      return res.status(200).json({
-        message: `${role} logged in successfully`,
-        user: result[0],
-      });
-    },
-  );
 });
 
 app.get("/projects/:id/instructions", (req, res) => {
