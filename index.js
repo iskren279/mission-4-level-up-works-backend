@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 //create the connection pool
-
+// >>>>>>>>SHOW THIS<<<<<<<<<<<<<<<<<
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST,
   user: process.env.MYSQL_USER,
@@ -20,6 +20,15 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 1,
   queueLimit: 0,
+});
+
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error("MYSQL CONNECTION ERROR:", err);
+  } else {
+    console.log("MYSQL CONNECTED");
+    connection.release();
+  }
 });
 
 app.get("/debug-tables", (req, res) => {
@@ -168,7 +177,7 @@ app.post("/auth/:role/login", async (req, res) => {
     return res.status(500).json({ errorMessage: "Database error" });
   }
 });
-
+// >>>>>>>>>>>>>SHOW THIS<<<<<<<<<<<<<<
 app.get("/projects/:id/instructions", (req, res) => {
   const { id } = req.params;
 
