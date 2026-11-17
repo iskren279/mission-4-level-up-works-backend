@@ -200,7 +200,8 @@ app.get("/projects/:id/instructions", (req, res) => {
 });
 
 //====PORT SETUP=====//
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 4000;
+
 app.listen(PORT, () => {
-  console.log(`server is listing on http://localhost:${PORT}`);
+  console.log(`Server is listening on port ${PORT}`);
 });
