@@ -51,7 +51,7 @@ app.get("/debug-project-columns", (req, res) => {
 
 //default route handler - check server running okay
 app.get("/", (req, res) => {
-  res.send("Server connect http://localhost:5173/ected!");
+  res.send("Server is running successfully!");
 });
 
 //default route handler database test
